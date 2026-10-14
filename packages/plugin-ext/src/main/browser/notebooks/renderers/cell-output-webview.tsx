@@ -28,14 +28,14 @@ import {
     NotebookCellOutputsSplice,
     NotebookContentChangedEvent
 } from '@theia/notebook/lib/browser';
-import { WebviewWidget } from '../../webview/webview';
+import { WebviewWidget } from '../../webview/webview.js';
 import { Message, WidgetManager } from '@theia/core/lib/browser';
-import { outputWebviewPreload, PreloadContext } from './output-webview-internal';
+import { outputWebviewPreload, PreloadContext } from './output-webview-internal.js';
 import { WorkspaceTrustService } from '@theia/workspace/lib/browser';
 import {
     CellOutputChange, CellsChangedMessage, CellsMoved, CellsSpliced,
     ChangePreferredMimetypeMessage, FromWebviewMessage, Output, OutputChangedMessage
-} from './webview-communication';
+} from './webview-communication.js';
 import { Disposable, DisposableCollection, Emitter, ILogger, QuickPickService, nls } from '@theia/core';
 import { NotebookModel } from '@theia/notebook/lib/browser/view-model/notebook-model';
 import { NotebookOptionsService, NotebookOutputOptions } from '@theia/notebook/lib/browser/service/notebook-options';
