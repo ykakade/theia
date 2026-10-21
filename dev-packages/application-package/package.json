@@ -28,6 +28,7 @@
     "./*": "./*"
   },
   "scripts": {
+    "afterInstall": "npm run build",
     "build": "theiaext build",
     "clean": "theiaext clean",
     "compile": "theiaext compile",

@@ -191,7 +191,8 @@ function collectExportNames(moduleNames: string[], fromDir: string): Map<string,
         return result;
     }
     // A virtual CommonJS module that requires all modules, so that they are resolved like the generated re-exports.
-    const fileName = path.join(fromDir, '__theia_re_exports__.cts');
+    // TypeScript uses forward slashes in file names on all platforms.
+    const fileName = path.join(fromDir, '__theia_re_exports__.cts').replace(/\\/g, '/');
     const content = moduleNames.map((moduleName, index) => `import m${index} = require('${moduleName}');\nexport { m${index} };\n`).join('');
     const options: ts.CompilerOptions = {
         module: ts.ModuleKind.NodeNext,
