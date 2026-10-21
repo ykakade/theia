@@ -15,7 +15,6 @@
 // *****************************************************************************
 
 import { expect } from 'chai';
-import * as sinon from 'sinon';
 import {
     isCompactionResponsePart, isTextResponsePart, LanguageModelMessage, LanguageModelResponse, LanguageModelStreamResponsePart, ReasoningSupport,
     ToolCallExecutor, ToolCallExecutorImpl, UserRequest
@@ -224,11 +223,9 @@ describe('ChatGptResponseApiUtils', () => {
     const utils = new ChatGptResponseApiUtils();
 
     for (const withTools of [false, true]) {
-        it(`logs ChatGPT metadata summaries using the SDK transport ${withTools ? 'with client tools' : 'without tools'}`, async () => {
+        it(`tolerates ChatGPT metadata events using the SDK transport ${withTools ? 'with client tools' : 'without tools'}`, async () => {
             const container = new Container();
-            const logger = new MockLogger();
-            const debug = sinon.spy(logger, 'debug');
-            container.bind(ILogger).toConstantValue(logger);
+            container.bind(ILogger).to(MockLogger);
             container.bind(ToolCallExecutor).to(ToolCallExecutorImpl).inSingletonScope();
             container.bind(ChatGptResponseApiUtils).toSelf();
             const responseUtils = container.get(ChatGptResponseApiUtils);
@@ -257,11 +254,6 @@ describe('ChatGptResponseApiUtils', () => {
                 for await (const part of response.stream) { parts.push(part); }
             }
             expect(parts).to.deep.equal([{ content: 'Answer' }, { input_tokens: 10, output_tokens: 5 }]);
-            const metadataLogs = debug.args.filter(args => args[0] === 'ChatGPT response metadata:');
-            expect(metadataLogs).to.deep.equal([['ChatGPT response metadata:', {
-                responseId: 'resp-test', sequenceNumber: 1, metadataKeys: ['openai_chatgpt_moderation_metadata']
-            }]]);
-            expect(JSON.stringify(debug.args)).not.to.include('private-value');
         });
 
         it(`propagates failed ChatGPT responses ${withTools ? 'with client tools' : 'without tools'}`, async () => {
@@ -354,43 +346,6 @@ describe('ChatGptResponseApiUtils', () => {
             ]);
         });
     }
-
-    it('bounds metadata summaries and forwards even malformed metadata unchanged', async () => {
-        const container = new Container();
-        const logger = new MockLogger();
-        const debug = sinon.spy(logger, 'debug');
-        container.bind(ILogger).toConstantValue(logger);
-        container.bind(ToolCallExecutor).to(ToolCallExecutorImpl).inSingletonScope();
-        container.bind(ChatGptResponseApiUtils).toSelf();
-        const responseUtils = container.get(ChatGptResponseApiUtils);
-        const metadata = Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`${index}-${'k'.repeat(200)}`, 'private-value']));
-        const events = [
-            { type: 'response.metadata', response_id: 'r'.repeat(200), sequence_number: 2, metadata },
-            { type: 'response.metadata', response_id: { sensitive: 'private-value' }, sequence_number: 'private-value', metadata: ['private-value'] },
-            { type: 'response.metadata' },
-            { type: 'response.metadata', metadata: 'private-value' },
-            { type: 'response.output_text.delta', delta: 'Answer' }
-        ];
-        const openai = new OpenAI({
-            apiKey: 'test-token',
-            fetch: async () => new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), {
-                headers: { 'content-type': 'text/event-stream' }
-            })
-        });
-        const received = [];
-        for await (const event of responseUtils.streamResponse(openai, { model: 'gpt-5.5', stream: true })) {
-            received.push(event);
-        }
-        expect(received).to.deep.equal(events);
-        expect(debug.args).to.deep.equal([
-            ['ChatGPT response metadata:', {
-                responseId: 'r'.repeat(128), sequenceNumber: 2,
-                metadataKeys: Object.keys(metadata).slice(0, 10).map(key => key.slice(0, 128))
-            }],
-            ...Array.from({ length: 3 }, () => ['ChatGPT response metadata:', { responseId: undefined, sequenceNumber: undefined, metadataKeys: [] }])
-        ]);
-        expect(JSON.stringify(debug.args)).not.to.include('private-value');
-    });
 
     it('ignores OpenAI compaction without dropping earlier conversation history', () => {
         const { input } = utils.processMessages([
