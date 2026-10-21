@@ -612,8 +612,10 @@ export class CellOutputWebviewImpl implements CellOutputWebview, Disposable {
         };
         // TS will try compiling `import()` in webviewPreloads, so use a helper function instead
         // of using `import(...)` directly
+        // The bundler keeps function names with calls to its `__name` helper, which isn't part of the source of `outputWebviewPreload`
         return `
             const __import = (x) => import(x);
+            const __name = (target, value) => Object.defineProperty(target, 'name', { value, configurable: true });
                 (${outputWebviewPreload})(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(ctx))}")))`;
     }
 
